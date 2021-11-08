@@ -18,7 +18,7 @@ type PolyInt struct {
 func (poly *PolyInt) Degree() int {
 	var mod = poly.mod
 	var deg = 0
-	for i, _ := range poly.Coefs {
+	for i := range poly.Coefs {
 		if poly.Coefs[len(poly.Coefs)-1-i]%mod != 0 {
 			deg = len(poly.Coefs) - i - 1
 			break
@@ -35,7 +35,7 @@ func (pol *PolyInt) deflate() {
 
 // retourne un nouveau PolyInt avec coefficients dans Z_mod
 func NewPolyInt(coefs []int, mod int) PolyInt {
-	for i, _ := range coefs {
+	for i := range coefs {
 		coefs[i] = (coefs[i]%mod + mod) % mod
 	}
 	var poly = PolyInt{Coefs: coefs, mod: mod}
@@ -269,7 +269,7 @@ func PolyIntDivMod(u, v *PolyInt) (PolyInt, PolyInt, error) {
 			newu.deflate()
 			polQuotient := NewPolyInt(quotient, mod)
 			return polQuotient, newu, nil
-
+			//
 		}
 	}
 }

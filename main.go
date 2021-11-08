@@ -53,6 +53,7 @@ func main() {
 
 	}
 	fmt.Println(nbtests, "tests done")
+	fmt.Println("coucou")
 
 	/* var z = 1 + 1i
 	cmplx.Conj(z)
