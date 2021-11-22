@@ -166,7 +166,8 @@ func PolyAddMod(u, v *PolyInt) (PolyInt, error) {
 // renvoie une slice contenant n occurences de l'entier c
 func ConstantIntSlice(n uint, c int) []int {
 	var res []int
-	for i := 1; i <= n; i++ {
+	var i uint // pour pouvoir comparer i à n
+	for i = 1; i <= n; i++ {
 		res = append(res, c)
 	}
 	return res
@@ -181,9 +182,9 @@ func (pol *PolyInt) PolyIntShift(n uint) *PolyInt {
 
 // revoie pol * x^n
 func PolyIntShift(pol *PolyInt, n uint) PolyInt {
-	//var res = Copy(pol)
-	//res.PolyIntShift(n)
-	return Copy(pol).PolyIntShift(n)
+	var res = Copy(pol)
+	res.PolyIntShift(n)
+	return res
 }
 
 // A REECRIRE
