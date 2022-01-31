@@ -145,7 +145,7 @@ func (ma *CMat) PPrint() {
 		}
 		fmt.Printf("\n")
 	}
-	fmt.Printf("\n")
+	//fmt.Printf("\n")
 }
 
 // Pretty print pour les mat.Dense
@@ -164,6 +164,26 @@ func (m *CMat) Add(a, b *CMat) *CMat {
 	mI.Add(&aI, &bI)
 
 	*m = Merge(&mR, &mI)
+	return m
+}
+
+// place le produit coef par coef a . b dans le reciever
+// AJOUTER GESTION ERREURS SUIVANT LES TYPES
+func (m *CMat) CoefWiseProd(a, b *CMat) *CMat {
+	aR, aI := a.RI()
+	bR, bI := b.RI()
+
+	var s, t, u, v mat.Dense
+	s.MulElem(&aI, &bI)
+	s.Scale(-1, &s)
+	t.MulElem(&aR, &bR)
+	t.Add(&s, &t)
+
+	u.MulElem(&aR, &bI)
+	v.MulElem(&aI, &bR)
+	u.Add(&u, &v)
+
+	*m = Merge(&t, &u)
 	return m
 }
 
@@ -191,7 +211,7 @@ func (m *CMat) Sub(a, b *CMat) *CMat {
 	return m
 }
 
-// place le produit a*b dans le reciever
+// place le produit matriciel a*b dans le reciever
 func (m *CMat) Mult(a, b *CMat) *CMat {
 	mR, mI := m.RI()
 	aR, aI := a.RI()

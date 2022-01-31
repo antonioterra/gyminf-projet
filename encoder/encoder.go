@@ -1,39 +1,49 @@
 package encoder
 
 import (
-	"fmt"
 	"math"
 	"math/cmplx"
 
 	"kazat.ch/lbcrypto/cMat"
-	"kazat.ch/lbcrypto/polyMod"
+	"kazat.ch/lbcrypto/poly"
+	"kazat.ch/lbcrypto/ring"
 )
 
 type Encoder struct {
-	M               float64
-	mod             int
-	scale           complex128
-	ENC, DEC, basis cMat.CMat
+	N        int
+	mod      int
+	scale    complex128
+	ENC      cMat.CMat
+	DEC      cMat.CMat
+	Basis    cMat.CMat
+	CycloPol poly.Poly
 }
 
-func NewEncoer(M float64, scale complex128, mod int) Encoder {
-
-	N := int(math.Floor(M / 2))
-	exposant := complex(0, 2.0*math.Pi/M)
+func (e *Encoder) GetMod() int {
+	return e.mod
+}
+func NewEncoder(N int, scale complex128, mod int) Encoder {
+	if N%2 != 0 {
+		panic("Error : parameter N must be even")
+	}
+	exposant := complex(0, math.Pi/float64(N))
 	xi := cmplx.Exp(exposant)
-	v := make([]complex128, N*N)
+	v := make([]complex128, int(N*N))
 
+	// Création de la matrice de Vandermonde et de son inverse
+	// i.e. isomorphisme sigma et sigma inverse
 	for i := 0; i < N; i++ {
 		root := cmplx.Pow(xi, complex(float64(2*i)+1, 0))
 		for j := 0; j < N; j++ {
 			v[N*i+j] = cmplx.Pow(root, complex(float64(j), 0))
 		}
 	}
-
 	DEC := cMat.NewCMat(N, N, v)
 	R, S := DEC.Invert()
 	ENC := cMat.Merge(&R, &S)
 
+	// Image de la base canonique de l'ensemble des polynomes
+	// par sigma (pour projection des vecteurs)
 	var truc []complex128
 	data := make([]complex128, N)
 	for i := 0; i < N; i++ {
@@ -44,64 +54,84 @@ func NewEncoer(M float64, scale complex128, mod int) Encoder {
 		G := cMat.NewCMat(N, 1, data)
 		truc = append(truc, G.Mult(&DEC, &G).GetData()...)
 	}
-
 	basis := cMat.NewCMat(N, N, truc)
 
+	// Création du Mème polynôme cyclotomique pour M = 2^p
+	coefs := make([]float64, N+1)
+	coefs[0], coefs[N] = 1, 1
+	cycloPol := poly.NewPoly(coefs)
+
 	res := Encoder{
-		M:     M,
-		mod:   mod,
-		ENC:   ENC,
-		DEC:   DEC,
-		scale: scale,
-		basis: basis,
+		N:        N,
+		mod:      mod,
+		ENC:      ENC,
+		DEC:      DEC,
+		scale:    scale,
+		Basis:    basis,
+		CycloPol: cycloPol,
 	}
 	return res
 }
 
-func (e *Encoder) Encode(v *cMat.CMat) polyMod.PolyInt {
+// Encodes complex vectors of length e.N/2
+func (e *Encoder) Encode(v *cMat.CMat) poly.Poly {
 
+	N := e.N
 	originaldata := v.GetData()
-	l := len(originaldata)
-	data := make([]complex128, 2*l)
+	if len(originaldata) != N/2 {
+		panic("Error : message dimension does not match this encoder")
+	}
+
+	data := make([]complex128, N)
 
 	for i, val := range originaldata {
-
 		data[i] = val
-		data[i+l] = cmplx.Conj(originaldata[l-1-i])
+		data[i+N/2] = cmplx.Conj(originaldata[N/2-1-i])
 	}
 
-	newv := cMat.NewCMat(2*l, 1, data)
-	fmt.Println("encoding :")
-	newv.PPrint()
+	newv := cMat.NewCMat(N, 1, data)
+
 	newv.Scale(e.scale)
-
-	newv = *cMat.ProjectOnRaws(&newv, &e.basis)
+	newv = *cMat.ProjectOnRaws(&newv, &e.Basis)
 	newv.Mult(&e.ENC, &newv)
+	pol := e.ToPol(&newv)
 
-	return ToPol(&newv, e.mod)
+	return pol
 }
 
-func (e *Encoder) Decode(pol polyMod.PolyInt) cMat.CMat {
+func (e *Encoder) Decode(pol poly.Poly) cMat.CMat {
 
-	v := ToMat(&pol)
+	v := e.ToMat(pol)
 	v.Mult(&e.DEC, &v)
-
 	v.Scale(1 / e.scale)
-
-	return v
+	data := v.GetData()[0 : e.N/2]
+	res := cMat.NewCMat(e.N/2, 1, data)
+	return res
 }
 
-func ToPol(m *cMat.CMat, mod int) polyMod.PolyInt {
+// returns the ring element corresponding to the vector m
+// ring parameters are deduced from enc
+func (enc *Encoder) ToPol(m *cMat.CMat) poly.Poly {
+	ring := ring.NewRing(enc.mod, enc.N)
 	srcData := m.GetData()
-	dstData := make([]int, len(srcData))
+	dstData := make([]float64, len(srcData))
 	for k, coef := range srcData {
-		dstData[k] = int(math.Round(real(coef)))
+		dstData[k] = math.Round(real(coef))
 	}
+	//fmt.Println("dstData : ", dstData)
+	pol := poly.NewPoly(dstData)
+	//fmt.Println("pol before to ring :", pol)
+	ring.ToRing(&pol)
+	//fmt.Println("pol after to ring :", pol)
 
-	return polyMod.NewPolyInt(dstData, mod)
+	return pol
 }
 
-func ToMat(pol *polyMod.PolyInt) cMat.CMat {
+func round(f float64) {
+	panic("unimplemented")
+}
+
+func (enc *Encoder) ToMat(pol poly.Poly) cMat.CMat {
 	srcData := pol.Coefs
 	dstData := make([]complex128, len(srcData))
 	for k, coef := range srcData {
@@ -110,3 +140,9 @@ func ToMat(pol *polyMod.PolyInt) cMat.CMat {
 
 	return cMat.NewCMat(len(srcData), 1, dstData)
 }
+
+func (e *Encoder) GetScale() complex128 {
+	return e.scale
+}
+
+//*************************
