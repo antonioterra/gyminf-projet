@@ -53,3 +53,12 @@ func ZO(n int, r float64) []float64 {
 	}
 	return res
 }
+
+// TO BE IMPLEMENTED. FOR NOW, CALLS ZO(sig^2)
+//returns n samples from DG(sig^2)
+// TO BE IMPLEMENTED. FOR NOW, CALLS ZO(sig^2)
+
+func DG(n int, s2 float64) []float64 {
+	r := s2
+	return ZO(n, r)
+}
