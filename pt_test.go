@@ -50,7 +50,7 @@ func randGradesVect(n int) []complex128 {
 	rand.Seed(time.Now().UnixNano())
 	vect := make([]complex128, n)
 	for i, _ := range vect {
-		vect[i] = complex(float64(rand.Intn(11)/2+1), 0)
+		vect[i] = complex(float64(rand.Intn(11))/2+1, 0)
 	}
 	return vect
 }
@@ -383,8 +383,6 @@ func aTestHomomMult(t *testing.T) {
 	vp.CoefWiseProd(&v1, &v2)
 
 	fmt.Println("coefwise product of messages :")
-	//v1.PPrint()
-	//v2.PPrint()
 	vp.PPrint()
 
 	//********************************
@@ -542,12 +540,11 @@ func aTestPTScale(t *testing.T) {
 func TestMean(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
-	nbStudents := 200
-	nbCourses := 15
+	nbStudents := 50
+	nbCourses := 10
 
-	Q := 2000000
-
-	baseScale := 512 + 0i
+	Q := int(math.Pow(10, 15))
+	baseScale := 100000 + 0i
 	N := 2 * nbStudents
 	h := 3
 	P := Q
@@ -585,7 +582,6 @@ func TestMean(t *testing.T) {
 	//********************************
 	sk := ckks1.SKeyGen()
 	pk := ckks1.PKeyGen(sk)
-	//evk := ckks1.EvKeyGen(sk)
 	//********************************
 	ct := make([]ckks.CT, nbCourses)
 
@@ -595,7 +591,7 @@ func TestMean(t *testing.T) {
 	//********************************
 	fmt.Println("PERFORMING COMPUTATIONS IN CT SPACE")
 	ctMean := ckks1.Mean(ct)
-	fmt.Println(ctMean)
+	//fmt.Println(ctMean)
 
 	//********************************
 	fmt.Println("DECRYPTING - DECODING")
@@ -603,7 +599,7 @@ func TestMean(t *testing.T) {
 
 	//********************************
 	msgMean := enc.Decode(ptMean)
-	fmt.Println("Mean computed on CTs :")
+	fmt.Println("Mean computed on CTs after decryption:")
 	msgMean.PPrint()
 
 	//********************************
