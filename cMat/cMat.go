@@ -20,6 +20,13 @@ func Copy(a *CMat) CMat {
 	return NewCMat(r, c, data)
 }
 
+func (a *CMat) Copy() CMat {
+	r, c := a.mat.Dims()
+	data := make([]complex128, r*c)
+	copy(data, a.GetData())
+	return NewCMat(r, c, data)
+}
+
 func (m *CMat) GetData() []complex128 {
 	return m.mat.RawCMatrix().Data
 }
@@ -145,7 +152,6 @@ func (ma *CMat) PPrint() {
 		}
 		fmt.Printf("\n")
 	}
-	//fmt.Printf("\n")
 }
 
 // Pretty print pour les mat.Dense
@@ -270,6 +276,22 @@ func DotProduct(a, b *CMat) complex128 {
 //Ajouter le controle de la dimension
 func (m *CMat) SquaredNorm() complex128 {
 	return DotProduct(m, m)
+}
+
+//Returns ||a-b||_infty
+func (a *CMat) MaxNorm() float64 {
+	ra, ca := a.mat.Dims()
+	max := 0.
+	for i := 0; i < ra; i++ {
+		for j := 0; j < ca; j++ {
+			challenger := cmplx.Abs(a.mat.At(i, j))
+			if challenger > max {
+				max = challenger
+			}
+		}
+	}
+
+	return max
 }
 
 //Renvoie la projection de a sur b en arrondissant les composantes

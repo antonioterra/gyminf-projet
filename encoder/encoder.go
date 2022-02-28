@@ -1,10 +1,12 @@
 package encoder
 
 import (
+	"fmt"
 	"math"
 	"math/cmplx"
 
 	"kazat.ch/lbcrypto/cMat"
+	"kazat.ch/lbcrypto/ckks"
 	"kazat.ch/lbcrypto/poly"
 	"kazat.ch/lbcrypto/ring"
 )
@@ -74,9 +76,9 @@ func NewEncoder(N int, scale complex128, mod int) Encoder {
 }
 
 // Encodes complex vectors of length e.N/2
-func (e *Encoder) Encode(v *cMat.CMat) poly.Poly {
+func (enc *Encoder) Encode(v *cMat.CMat) ckks.PT {
 
-	N := e.N
+	N := enc.N
 	originaldata := v.GetData()
 	if len(originaldata) != N/2 {
 		panic("Error : message dimension does not match this encoder")
@@ -91,21 +93,23 @@ func (e *Encoder) Encode(v *cMat.CMat) poly.Poly {
 
 	newv := cMat.NewCMat(N, 1, data)
 
-	newv.Scale(e.scale)
-	newv = *cMat.ProjectOnRaws(&newv, &e.Basis)
-	newv.Mult(&e.ENC, &newv)
-	pol := e.ToPol(&newv)
+	newv.Scale(enc.scale)
+	newv = *cMat.ProjectOnRaws(&newv, &enc.Basis)
+	newv.Mult(&enc.ENC, &newv)
+	pol := enc.ToPol(&newv)
 
-	return pol
+	res := ckks.PT{Pol: pol, Scale: enc.scale}
+
+	return res
 }
 
-func (e *Encoder) Decode(pol poly.Poly) cMat.CMat {
+func (enc *Encoder) Decode(pt ckks.PT) cMat.CMat {
 
-	v := e.ToMat(pol)
-	v.Mult(&e.DEC, &v)
-	v.Scale(1 / e.scale)
-	data := v.GetData()[0 : e.N/2]
-	res := cMat.NewCMat(e.N/2, 1, data)
+	v := enc.ToMat(pt.Pol)
+	v.Mult(&enc.DEC, &v)
+	v.Scale(1 / pt.Scale)
+	data := v.GetData()[0 : enc.N/2]
+	res := cMat.NewCMat(enc.N/2, 1, data)
 	return res
 }
 
@@ -146,3 +150,17 @@ func (e *Encoder) GetScale() complex128 {
 }
 
 //*************************
+//returns the enc-compatible polynomial corresponding to the vector (k, ..., k)
+func (enc *Encoder) ConstToPT(k float64, scale complex128) ckks.PT {
+	n := enc.N
+
+	data := make([]complex128, n/2)
+	for i := 0; i < n/2; i++ {
+		data[i] = complex(k, 0)
+	}
+
+	v := cMat.NewCMat(n/2, 1, data)
+	fmt.Println("ici :", v)
+	pt := enc.Encode(&v)
+	return pt
+}

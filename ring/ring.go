@@ -6,8 +6,8 @@ import (
 
 // RING ELEMENT
 type Ring struct {
-	CMod int
-	PMod poly.Poly
+	CMod int       // coefs modulus
+	PMod poly.Poly // pol modulus
 }
 
 // returns a ring with coef modulus mod and pol modulus X^N + 1
@@ -33,21 +33,23 @@ func (r *Ring) TakeCoefMod(pol *poly.Poly) {
 	}
 }
 
-// changes pol to [pol % PMod]_q (in place)
+// changes pol to [pol % PMod] (in place)
+// DOES AND SHOULD NOT TAKE THE MOD OF THE COEFS !!!
 func (r *Ring) ToRing(pol *poly.Poly) {
 
 	_, reste := poly.PolyDiv(*pol, r.PMod)
 	//r.TakeCoefMod(&reste)
+	//reste.Deflate()
 	pol.Coefs = reste.Coefs
 }
 
-// returns the ring-sum of ring elements u and v
+// returns the sum of ring elements u and v
 // u and v MUST already be ring elements
-func (r *Ring) Add(u, v poly.Poly) poly.Poly {
-	res := poly.PolyAdd(u, v)
-	//r.TakeCoefMod(&res)
-	return res
-}
+//func (r *Ring) Add(u, v poly.Poly) poly.Poly {
+//	res := poly.Add(u, v)
+//	//r.TakeCoefMod(&res)
+//	return res
+//}
 
 // returns the ring-product of ring elements u and v
 // u and v MUST already be ring elements
@@ -57,15 +59,15 @@ func (r *Ring) Mult(u, v poly.Poly) poly.Poly {
 	r.ToRing(&res)
 	//fmt.Println("after :", res)
 
-	res.Deflate()
+	//res.Deflate()
 	return res
 }
 
-// changes pol to k*pol as ring element (in place)
-func (r *Ring) Scale(k float64, pol *poly.Poly) {
-	coefs := pol.Coefs
-	for i, c := range coefs {
-		coefs[i] = k * c
-	}
-	r.ToRing(pol)
-}
+// changes pol to k*pol (in place)
+//func (r *Ring) Scale(k float64, pol *poly.Poly) {
+//	coefs := pol.Coefs
+//	for i, c := range coefs {
+//		coefs[i] = k * c
+//	}
+//	r.ToRing(pol)
+//}
