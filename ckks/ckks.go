@@ -11,11 +11,10 @@ import (
 
 //  A MODIFIER : IL FAUDRAIT LUI DONNER UN Q_0 ET UN DELTA, LE CKKS SE CALCULE SON Q  TOUT SEUL
 type CKKS struct {
-	N int      // for the X^N + 1
-	Q *big.Int // initial coef modulus
-	P *big.Int // for modulus in evaluation key
-	H int      // for the HWT distribution
-	//r     ring.Ring // the underlying ring for N and Q
+	N     int       // for the X^N + 1
+	Q     *big.Int  // initial coef modulus
+	P     *big.Int  // for modulus in evaluation key
+	H     int       // for the HWT distribution
 	Cyclo poly.Poly // the cyclotomic polynomial for the underlying ring
 	//Scale complex128 //original scaling factor for the encoder
 	L  int     //number of levels
@@ -41,9 +40,10 @@ func NewCKKS(Q, P *big.Int, N, H, L int, s2 float64) CKKS {
 }
 
 func NewCT(a, b poly.Poly, mod *big.Int, scale complex128, L int) CT {
-	modCopy := new(big.Int).Set(mod) // pour que différents ct crés avec le même mod ne le partagent pas !
 
-	CT := CT{A: a, B: b, Mod: modCopy, Scale: scale, L: L}
+	modulus := new(big.Int).Set(mod) // pour que différents ct crés avec le même mod ne le partagent pas !
+
+	CT := CT{A: a, B: b, Mod: modulus, Scale: scale, L: L}
 	return CT
 }
 
@@ -81,7 +81,6 @@ func (ckks *CKKS) PKeyGen(sk [2]poly.Poly) [2]poly.Poly {
 
 func (ckks *CKKS) EvKeyGen(sk [2]poly.Poly) [2]poly.Poly {
 
-	//r := ckks.r
 	s := sk[1]
 	prod := new(big.Int).Mul(ckks.Q, ckks.P)
 	a := random.RandomPol(ckks.N, prod)
@@ -115,8 +114,6 @@ func (ckks *CKKS) EvKeyGen(sk [2]poly.Poly) [2]poly.Poly {
 
 func (ckks *CKKS) Encrypt(pt encoder.PT, pk [2]poly.Poly) CT {
 
-	//r := ckks.r
-
 	v := poly.NewPoly(random.ZO(ckks.N, 0.5))
 	e0 := poly.NewPoly(random.DG(ckks.N, ckks.s2, ckks.Q))
 	e1 := poly.NewPoly(random.DG(ckks.N, ckks.s2, ckks.Q))
@@ -133,14 +130,11 @@ func (ckks *CKKS) Encrypt(pt encoder.PT, pk [2]poly.Poly) CT {
 
 	CT := NewCT(res1, res0, ckks.Q, pt.Scale, ckks.L)
 
-	//return [2]poly.Poly{res0, res1}
-	//fmt.Println("check :", res0, res1)
 	return CT
 }
 
 func (ckks *CKKS) Decrypt(ct CT, sk [2]poly.Poly) encoder.PT {
 
-	//r := ckks.r
 	pt := poly.MultMod(ct.A, sk[1], ckks.Cyclo)
 	pt = poly.Add(pt, ct.B)
 	pt.TakeCoefMod(ct.Mod)
@@ -159,27 +153,20 @@ func (ckks *CKKS) CTAdd(ct1, ct2 CT) CT {
 	a.TakeCoefMod(ct1.Mod)
 	b.TakeCoefMod(ct1.Mod)
 
-	sum := NewCT(a, b, ct1.Mod, ct1.Scale, ct1.L)
+	mod := new(big.Int) // nécessaire sinon les mod de ct1 et du prod pointent vers la meme adresse
+	mod.Set(ct1.Mod)
+
+	sum := NewCT(a, b, mod, ct1.Scale, ct1.L)
 
 	return sum
 }
 
 // return the CT corresponding to the constant vector (k, ..., k) at the given scale
-func (ckks *CKKS) ConstToCT(k float64, scale complex128, pk [2]poly.Poly) CT {
+func (ckks *CKKS) ConstToCT(k float64, mod *big.Int, scale complex128, pk [2]poly.Poly) CT {
 	enc := encoder.NewEncoder(ckks.N, scale)
 	pt := enc.ConstToPT(k)
-	return ckks.Encrypt(pt, pk)
-}
-
-//returns the ct corresponding to the encryption of k*message behin ct
-//includes RS
-func (ckks *CKKS) CTScaleBis(ct CT, k float64, scale complex128, pk, evk [2]poly.Poly) CT {
-	enc := encoder.NewEncoder(ckks.N, scale)
-	ptk := enc.ConstToPT(k)
-	ctk := ckks.Encrypt(ptk, pk)
-	res := ckks.CTMult(ct, ctk, evk)
-	bigScale := big.NewInt(int64(real(ct.Scale)))
-	ckks.RS(&res, bigScale)
+	ct := ckks.Encrypt(pt, pk)
+	res := NewCT(ct.A, ct.B, mod, scale, ckks.L)
 	return res
 }
 
@@ -238,17 +225,19 @@ func (ckks *CKKS) Mean(data []CT, pk, evk [2]poly.Poly, delta *big.Int) CT {
 	N := ckks.N
 	n := len(data)
 
-	res := NewCT(poly.ZeroPoly(ckks.N-1), poly.ZeroPoly(N-1), data[0].Mod, data[0].Scale, data[0].L)
+	mod := new(big.Int) // nécessaire sinon les mod de ct1 et du prod pointent vers la meme adresse
+	mod.Set(data[0].Mod)
+
+	res := NewCT(poly.ZeroPoly(ckks.N-1), poly.ZeroPoly(N-1), mod, data[0].Scale, data[0].L)
 	for i := 0; i < n; i++ {
 		res = ckks.CTAdd(res, data[i])
 	}
 
 	k := 1.0 / float64(n)
 	//scale := data[0].Scale
-	scale := complex(math.Log(float64(n))*1000000000, 0.) // marche mieux que le scale basé sur data[0]
-	ctk := ckks.ConstToCT(k, scale, pk)
+	scale := complex(math.Log(float64(n))*100000000, 0.) // marche mieux que le scale basé sur data[0]
+	ctk := ckks.ConstToCT(k, mod, scale, pk)
 	res = ckks.CTMult(ctk, res, evk)
-	ckks.RS(&res, delta)
 	return res
 }
 
@@ -262,6 +251,7 @@ func (ckks *CKKS) Var(data []CT, sk, pk, evk [2]poly.Poly, delta *big.Int) CT {
 
 	scalesRatio := big.NewInt(int64(real(mean.Scale / data[0].Scale)))
 
+	//enc := encoder.NewEncoder(ckks.N, 1+1i)
 	//puts the (x - bar(x))^2 into the data variable
 	for i := range data {
 		data[i].CTIncScale(scalesRatio)
@@ -272,7 +262,7 @@ func (ckks *CKKS) Var(data []CT, sk, pk, evk [2]poly.Poly, delta *big.Int) CT {
 	}
 
 	res := ckks.Mean(data, pk, evk, delta)
-
+	ckks.RS(&res, delta)
 	return res
 }
 
