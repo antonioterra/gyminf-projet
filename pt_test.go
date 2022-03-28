@@ -27,14 +27,14 @@ var boundForGradeEntries = 11.0
 
 /* ----------------- ckks related params --------------------*/
 
-var N = 128 // polynomial dim related param
+var NN = 16 // polynomial dim related param
 
-var q0_nb_bits = 1000  // modulus related param
+var q0_nb_bits = 300   // modulus related param
 var delta_nb_bits = 20 // precision and modulus related param (greater means more precise)
 var nb_levels = 10     // modulus related param
 
-var h = N / 2 // sk distribution related param (must be < N)
-var s2 = 4.0  // random errors related param
+var h = NN / 2 // sk distribution related param (must be < N)
+var s2 = 2.0   // random errors related param
 
 /* ----------------------------------------------------------*/
 /* ------------------- COMPUTED PARAMETERS ------------------*/
@@ -196,7 +196,7 @@ func _TestScaleDiv(t *testing.T) {
 // tests the encoder
 func _TestEncoding(t *testing.T) {
 
-	enc := encoder.NewEncoder(N, baseScale)
+	enc := encoder.NewEncoder(NN, baseScale)
 	va := cMat.NewCMat(2, 1, randComplexVect(2, boundForVectorEntries))
 	va.PPrint()
 
@@ -217,9 +217,9 @@ func _TestEncrypt(t *testing.T) {
 	Q := new(big.Int)
 	Q.SetString(QL, 2)
 	P := Q
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+	ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 
-	va := cMat.NewCMat(N/2, 1, randComplexVect(N/2, boundForVectorEntries))
+	va := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, boundForVectorEntries))
 
 	//********************************
 	fmt.Println("ENCODING")
@@ -246,9 +246,9 @@ func TestEncryptDecrypt(t *testing.T) {
 	Q := new(big.Int)
 	Q.SetString(QL, 2)
 	P := Q
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+	ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 
-	va := cMat.NewCMat(N/2, 1, randComplexVect(N/2, boundForVectorEntries))
+	va := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, boundForVectorEntries))
 
 	//fmt.Println("message :")
 	//va.PPrint()
@@ -293,12 +293,12 @@ func TestHomomAdd(t *testing.T) {
 		Q := new(big.Int)
 		Q.SetString(QL, 2)
 		P := Q
-		ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+		ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 
 		//********************************
-		v1 := cMat.NewCMat(N/2, 1, randComplexVect(N/2, boundForVectorEntries))
-		v2 := cMat.NewCMat(N/2, 1, randComplexVect(N/2, boundForVectorEntries))
-		vs := cMat.NewCMat(N/2, 1, make([]complex128, N/2))
+		v1 := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, boundForVectorEntries))
+		v2 := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, boundForVectorEntries))
+		vs := cMat.NewCMat(NN/2, 1, make([]complex128, NN/2))
 
 		vs.Add(&v1, &v2)
 
@@ -356,7 +356,7 @@ func _TestKeyGen(t *testing.T) {
 	Q := new(big.Int)
 	Q.SetString(QL, 2)
 	P := Q
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+	ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 
 	//********************************
 	fmt.Println("GENERATING KEYS")
@@ -378,13 +378,13 @@ func TestHomomMult(t *testing.T) {
 	Q := new(big.Int)
 	Q.SetString(QL, 2)
 	P := Q
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+	ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 	enc := encoder.NewEncoder(ckks.N, baseScale)
 
 	//********************************
-	v1 := cMat.NewCMat(N/2, 1, randComplexVect(N/2, float64(boundForVectorEntries)))
-	v2 := cMat.NewCMat(N/2, 1, randComplexVect(N/2, float64(boundForVectorEntries)))
-	vp := cMat.NewCMat(N/2, 1, make([]complex128, N/2))
+	v1 := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, float64(boundForVectorEntries)))
+	v2 := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, float64(boundForVectorEntries)))
+	vp := cMat.NewCMat(NN/2, 1, make([]complex128, NN/2))
 
 	vp.CoefWiseProd(&v1, &v2)
 
@@ -435,26 +435,26 @@ func TestHomomMult(t *testing.T) {
 func _TestConstant(t *testing.T) {
 	k := 4.0
 
-	enc := encoder.NewEncoder(N, baseScale)
+	enc := encoder.NewEncoder(NN, baseScale)
 
 	pt := enc.ConstToPT(k)
 	fmt.Println("Encoding of constant vector (k=4) with baseScale = 64")
 	fmt.Println(pt)
 }
 
-func TestHomScalingBis(t *testing.T) {
+func TestHomScaling(t *testing.T) {
 	fmt.Println("TEST HOMOM SCALING")
 
-	k := -107
+	k := -10
 
 	Q := new(big.Int)
 	Q.SetString(QL, 2)
 	P := Q
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+	ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 	enc := encoder.NewEncoder(ckks.N, baseScale)
 
 	//********************************
-	v := cMat.NewCMat(N/2, 1, randComplexVect(N/2, boundForVectorEntries))
+	v := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, boundForVectorEntries))
 
 	//v.PPrint()
 
@@ -511,11 +511,11 @@ func TestCTIncScale(t *testing.T) {
 	Q.SetString(QL, 2)
 	P := Q
 
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+	ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 	enc := encoder.NewEncoder(ckks.N, baseScale)
 
 	//********************************
-	v := cMat.NewCMat(N/2, 1, randComplexVect(N/2, boundForVectorEntries))
+	v := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, boundForVectorEntries))
 
 	//v.PPrint()
 
@@ -610,6 +610,7 @@ func TestMean(t *testing.T) {
 	//********************************
 	//fmt.Println("PERFORMING COMPUTATIONS IN CT SPACE")
 	ctMean := ckks1.Mean(ct, pk, evk, deltaBigInt)
+	ckks1.RS(&ctMean, deltaBigInt)
 	//fmt.Println("ctmean scale :", ctMean.Scale)
 	//********************************
 	//fmt.Println("DECRYPTING - DECODING")
@@ -642,10 +643,10 @@ func TestRS(t *testing.T) {
 	//Q.Mul(Q, bigBaseScale)
 	//Q.Mul(Q, bigBaseScale)
 
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
+	ckks := ckks.NewCKKS(Q, P, NN, h, nb_levels, s2)
 	enc := encoder.NewEncoder(ckks.N, baseScale)
 
-	va := cMat.NewCMat(N/2, 1, randComplexVect(N/2, boundForVectorEntries))
+	va := cMat.NewCMat(NN/2, 1, randComplexVect(NN/2, boundForVectorEntries))
 
 	//va.PPrint()
 
@@ -694,8 +695,8 @@ func TestVar(t *testing.T) {
 	fmt.Println("TEST VAR")
 	rand.Seed(time.Now().UnixNano())
 
-	nbStudents := 50
-	nbCourses := 10
+	nbStudents := NN
+	nbCourses := 50
 
 	Q := new(big.Int)
 	Q.SetString(QL, 2)
@@ -742,7 +743,6 @@ func TestVar(t *testing.T) {
 	//fmt.Println("PERFORMING COMPUTATIONS IN CT SPACE")
 	ctVar := ckks1.Var(cts, sk, pk, evk, deltaBigInt)
 
-	//ckks1.RS(&ctVar, deltaBigInt)
 	//********************************
 	//fmt.Println("DECRYPTING - DECODING")
 	ptVar := ckks1.Decrypt(ctVar, sk)
@@ -785,68 +785,4 @@ func TestVar(t *testing.T) {
 	if err > 0.1 {
 		t.Fail()
 	}
-}
-
-func TestRSBis(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	fmt.Println("TESTING RS AFTER *")
-
-	Q := new(big.Int)
-	Q.SetString(QL, 2)
-	P := Q
-	ckks := ckks.NewCKKS(Q, P, N, h, nb_levels, s2)
-	enc := encoder.NewEncoder(ckks.N, baseScale)
-
-	//********************************
-	v1 := cMat.NewCMat(N/2, 1, randComplexVect(N/2, float64(boundForVectorEntries)))
-	v2 := cMat.NewCMat(N/2, 1, randComplexVect(N/2, float64(boundForVectorEntries)))
-	vp := cMat.NewCMat(N/2, 1, make([]complex128, N/2))
-
-	vp.CoefWiseProd(&v1, &v2)
-
-	//fmt.Println("should get:")
-	//vp.PPrint()
-
-	//********************************
-	//fmt.Println("ENCODING")
-	pt1 := enc.Encode(&v1)
-	pt2 := enc.Encode(&v2)
-	//fmt.Println("pt1 :", pt1)
-	//fmt.Println("pt2 :", pt2)
-
-	//fmt.Println("pt of prod :", enc.Encode(&vp))
-
-	//********************************
-	//fmt.Println("GENERAING KEYS")
-	sk := ckks.SKeyGen()
-	pk := ckks.PKeyGen(sk)
-	evk := ckks.EvKeyGen(sk)
-
-	//********************************
-	//fmt.Println("ENCRYPTING")
-	ct1 := ckks.Encrypt(pt1, pk)
-	ct2 := ckks.Encrypt(pt2, pk)
-
-	//********************************
-	//fmt.Println("PRODUCT OF CYPHERTEXTS")
-	ctp := ckks.CTMult(ct1, ct2, evk)
-	//fmt.Println("ctp befors RS: ", ctp.Mod)
-	ckks.RS(&ctp, deltaBigInt)
-	//fmt.Println("ctp after RS: ", ctp.Mod)
-
-	//fmt.Println("ctp :", ctp)
-	//fmt.Println("ctp scale :", ctp.Scale)
-	//********************************
-	//fmt.Println("DECRYPTING PRODUCT:")
-	ptp := ckks.Decrypt(ctp, sk)
-	vect := enc.Decode(ptp)
-	//vect.PPrint()
-
-	//********************************
-	err := compare(vect, vp)
-	fmt.Printf("max norm of errors : %f \n", err)
-	if err > tolerance {
-		t.Fail()
-	}
-
 }
