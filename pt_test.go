@@ -15,14 +15,30 @@ import (
 	"kazat.ch/lbcrypto/random"
 )
 
-// ATTENTION : peut-être UN PROBLEMENT DANS LA CONVERSION DES DELTA ENTRE BIG.INT -> FLOAT64
-var tolerance = 0.1
-var N = 128
-var s2 = 4.0 // variance of the DG distribution
+/* ----------------------------------------------------------*/
+/* --------------------- USER PARAMETERS --------------------*/
+/* ----------------------------------------------------------*/
 
-var q0_nb_bits = 1000 //1000
-var delta_nb_bits = 20
-var nb_levels = 10
+/* ----------------- testing unit params --------------------*/
+
+var tolerance = 0.1 // allowed diff betweed results and expected results
+var boundForVectorEntries = 50.0
+var boundForGradeEntries = 11.0
+
+/* ----------------- ckks related params --------------------*/
+
+var N = 128 // polynomial dim related param
+
+var q0_nb_bits = 1000  // modulus related param
+var delta_nb_bits = 20 // precision and modulus related param (greater means more precise)
+var nb_levels = 10     // modulus related param
+
+var h = N / 2 // sk distribution related param (must be < N)
+var s2 = 4.0  // random errors related param
+
+/* ----------------------------------------------------------*/
+/* ------------------- COMPUTED PARAMETERS ------------------*/
+/* ----------------------------------------------------------*/
 
 var Q0 = q0(q0_nb_bits)
 var QL = q0(q0_nb_bits + nb_levels*delta_nb_bits)
@@ -34,10 +50,9 @@ var deltaFloat64, _ = deltaBigFloat.Float64()
 
 var baseScale = complex(deltaFloat64, 0)
 
-var boundForVectorEntries = 50.0
-var boundForGradeEntries = 50.0
-
-var h = N / 2 // must be < N
+/* ----------------------------------------------------------*/
+/* ----------------------------------------------------------*/
+/* ----------------------------------------------------------*/
 
 func q0(n int) string {
 	q0 := "1"
@@ -45,16 +60,6 @@ func q0(n int) string {
 		q0 += "0"
 	}
 	return q0
-}
-
-func _TestParams(t *testing.T) {
-	fmt.Println("bscale = ", baseScale)
-	Q := new(big.Int)
-	Q.SetString(QL, 2)
-	fmt.Println("Q = ", Q)
-	fmt.Println("QL = ", QL)
-	fmt.Println("DeltaBigFloat and DeltaFloat64 : ", deltaBigFloat, deltaFloat64)
-
 }
 
 // return a random complex128 with real et imaginary parts in (-b, b)
