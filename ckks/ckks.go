@@ -268,13 +268,10 @@ func (ckks *CKKS) Var(data []CT, sk, pk, evk [2]poly.Poly, delta *big.Int) CT {
 		data[i].CTScale(big.NewInt(-1))
 		data[i] = ckks.CTAdd(data[i], mean)
 		data[i] = ckks.CTMult(data[i], data[i], evk)
-	}
-	for i := range data {
 		ckks.RS(&data[i], delta)
 	}
 
 	res := ckks.Mean(data, pk, evk, delta)
-	//ckks.RS(&res, delta)
 
 	return res
 }
