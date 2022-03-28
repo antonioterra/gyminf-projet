@@ -3,17 +3,15 @@ package encoder
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"math/cmplx"
 
 	"kazat.ch/lbcrypto/cMat"
-	"kazat.ch/lbcrypto/ckks"
 	"kazat.ch/lbcrypto/poly"
-	"kazat.ch/lbcrypto/ring"
 )
 
 type Encoder struct {
 	N        int
-	mod      int
 	scale    complex128
 	ENC      cMat.CMat
 	DEC      cMat.CMat
@@ -21,10 +19,17 @@ type Encoder struct {
 	CycloPol poly.Poly
 }
 
-func (e *Encoder) GetMod() int {
-	return e.mod
+type PT struct {
+	Pol   poly.Poly
+	Scale complex128
 }
-func NewEncoder(N int, scale complex128, mod int) Encoder {
+
+func NewPT(pol poly.Poly, scale complex128) PT {
+	PT := PT{Pol: pol, Scale: scale}
+	return PT
+}
+
+func NewEncoder(N int, scale complex128) Encoder {
 	if N%2 != 0 {
 		panic("Error : parameter N must be even")
 	}
@@ -59,13 +64,12 @@ func NewEncoder(N int, scale complex128, mod int) Encoder {
 	basis := cMat.NewCMat(N, N, truc)
 
 	// Création du Mème polynôme cyclotomique pour M = 2^p
-	coefs := make([]float64, N+1)
-	coefs[0], coefs[N] = 1, 1
+	coefs := make([]*big.Int, N+1)
+	coefs[0], coefs[N] = big.NewInt(1), big.NewInt(1)
 	cycloPol := poly.NewPoly(coefs)
 
 	res := Encoder{
 		N:        N,
-		mod:      mod,
 		ENC:      ENC,
 		DEC:      DEC,
 		scale:    scale,
@@ -76,7 +80,7 @@ func NewEncoder(N int, scale complex128, mod int) Encoder {
 }
 
 // Encodes complex vectors of length e.N/2
-func (enc *Encoder) Encode(v *cMat.CMat) ckks.PT {
+func (enc *Encoder) Encode(v *cMat.CMat) PT {
 
 	N := enc.N
 	originaldata := v.GetData()
@@ -98,48 +102,54 @@ func (enc *Encoder) Encode(v *cMat.CMat) ckks.PT {
 	newv.Mult(&enc.ENC, &newv)
 	pol := enc.ToPol(&newv)
 
-	res := ckks.PT{Pol: pol, Scale: enc.scale}
+	res := PT{Pol: pol, Scale: enc.scale}
 
 	return res
 }
 
-func (enc *Encoder) Decode(pt ckks.PT) cMat.CMat {
+func (enc *Encoder) Decode(pt PT) cMat.CMat {
 
 	v := enc.ToMat(pt.Pol)
 	v.Mult(&enc.DEC, &v)
-	v.Scale(1 / pt.Scale)
+	v.Scale(1.0 / pt.Scale)
 	data := v.GetData()[0 : enc.N/2]
 	res := cMat.NewCMat(enc.N/2, 1, data)
 	return res
 }
 
-// returns the ring element corresponding to the vector m
-// ring parameters are deduced from enc
+func (enc *Encoder) DecodeDebug(pt PT) cMat.CMat {
+
+	v := enc.ToMat(pt.Pol)
+	fmt.Println("mat of pt:", v)
+	v.Mult(&enc.DEC, &v)
+	v.Scale(1.0 / pt.Scale)
+	//fmt.Println("scale :", 1./pt.Scale)
+	data := v.GetData()[0 : enc.N/2]
+	res := cMat.NewCMat(enc.N/2, 1, data)
+	return res
+}
+
+// returns the poly.Poly corresponding to the vector m
 func (enc *Encoder) ToPol(m *cMat.CMat) poly.Poly {
-	ring := ring.NewRing(enc.mod, enc.N)
 	srcData := m.GetData()
-	dstData := make([]float64, len(srcData))
+	dstData := make([]*big.Int, len(srcData))
 	for k, coef := range srcData {
-		dstData[k] = math.Round(real(coef))
+		dstData[k] = big.NewInt(int64(math.Round(real(coef))))
 	}
-	//fmt.Println("dstData : ", dstData)
 	pol := poly.NewPoly(dstData)
-	//fmt.Println("pol before to ring :", pol)
-	ring.ToRing(&pol)
-	//fmt.Println("pol after to ring :", pol)
 
 	return pol
 }
 
-func round(f float64) {
-	panic("unimplemented")
-}
-
+//converts pol to a cMat.CMat
 func (enc *Encoder) ToMat(pol poly.Poly) cMat.CMat {
 	srcData := pol.Coefs
 	dstData := make([]complex128, len(srcData))
 	for k, coef := range srcData {
-		dstData[k] = complex(float64(coef), 0)
+		temp := new(big.Float).SetInt(coef)
+		coefFloat64, _ := temp.Float64()
+		dstData[k] = complex(coefFloat64, 0)
+
 	}
 
 	return cMat.NewCMat(len(srcData), 1, dstData)
@@ -150,8 +160,8 @@ func (e *Encoder) GetScale() complex128 {
 }
 
 //*************************
-//returns the enc-compatible polynomial corresponding to the vector (k, ..., k)
-func (enc *Encoder) ConstToPT(k float64, scale complex128) ckks.PT {
+//returns the enc-compatible polynomial corresponding to the vector (k, ..., k) at scale scale
+func (enc *Encoder) ConstToPT(k float64) PT {
 	n := enc.N
 
 	data := make([]complex128, n/2)
@@ -160,7 +170,6 @@ func (enc *Encoder) ConstToPT(k float64, scale complex128) ckks.PT {
 	}
 
 	v := cMat.NewCMat(n/2, 1, data)
-	fmt.Println("ici :", v)
 	pt := enc.Encode(&v)
 	return pt
 }
