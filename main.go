@@ -121,7 +121,7 @@ func main() {
 	meanClear := enc.Decode(meanPT)
 	varClear := enc.Decode(varPT)
 
-	// Printing grades, mean and var for each studend
+	// Printing grades, mean and var for each student
 	for i := 0; i < nbStudents; i++ {
 		for j := 0; j < nbCourses; j++ {
 			fmt.Print(real(vectors[j].GetData()[i]), " ")
