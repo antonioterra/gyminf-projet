@@ -8,11 +8,14 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-// structure sur laquelle seront définies de nouvelles opérations sur les matrices à coefficients complexes
+// structure sur laquelle seront définies des opérations
+// sur les matrices à coefficients complexes qui ne sont pas définies
+// dans le package math
 type CMat struct {
 	mat mat.CDense
 }
 
+// retourne une copie de la matrice a
 func Copy(a *CMat) CMat {
 	r, c := a.mat.Dims()
 	data := make([]complex128, r*c)
@@ -20,6 +23,8 @@ func Copy(a *CMat) CMat {
 	return NewCMat(r, c, data)
 }
 
+// variante de la fonction Copy utilisant un reciever
+// (faut bien découvrir GoLang un jour)
 func (a *CMat) Copy() CMat {
 	r, c := a.mat.Dims()
 	data := make([]complex128, r*c)
@@ -27,17 +32,18 @@ func (a *CMat) Copy() CMat {
 	return NewCMat(r, c, data)
 }
 
+// retourne la liste des coefficients composant une matrice
 func (m *CMat) GetData() []complex128 {
 	return m.mat.RawCMatrix().Data
 }
 
+// retourne une matrice n x m dont les coefficients sont issus de data
 func NewCMat(n, m int, data []complex128) CMat {
 	ma := mat.NewCDense(n, m, data)
 	return CMat{mat: *ma}
 }
 
 // retourne le # de ligne dans la matrice m sur lequel se trouve le ième coefficient
-// compte des coefs commence à 0
 // première ligne/col est ligne/col 0
 func (ma *CMat) getRawOf(i int) int {
 	m := ma.mat
@@ -46,7 +52,6 @@ func (ma *CMat) getRawOf(i int) int {
 }
 
 // retourne le # de colonne dans la matrice m sur lequel se trouve le ième coefficient
-// compte des coefs commence à 0
 // première ligne/col est ligne/col 0
 func (ma *CMat) getColOf(i int) int {
 	m := ma.mat
@@ -99,7 +104,7 @@ func (ma *CMat) RI() (mat.Dense, mat.Dense) {
 	return *mat.NewDense(r, c, rePart), *mat.NewDense(r, c, imPart)
 }
 
-// retourne la matrice CMAT = E + iF
+// retourne la matrice E + iF en tant que CMat
 func Merge(E, F *mat.Dense) CMat {
 	r, c := E.Dims()
 	data := make([]complex128, r*c)
@@ -147,7 +152,19 @@ func (ma *CMat) PPrint() {
 	for i := 0; i < r; i++ {
 		for j := 0; j < c; j++ {
 			fmt.Printf("%4.4f ", m.At(i, j))
-			//fmt.Printf("%.2g", m.At(i, j))
+
+		}
+		fmt.Printf("\n")
+	}
+}
+
+// Pretty print pour les CMat avec valeurs réelles
+func (ma *CMat) PPrintR() {
+	m := ma.mat
+	r, c := m.Dims()
+	for i := 0; i < r; i++ {
+		for j := 0; j < c; j++ {
+			fmt.Printf("%4.4f ", real(m.At(i, j)))
 
 		}
 		fmt.Printf("\n")
@@ -160,7 +177,7 @@ func PP(m *mat.Dense) {
 	fmt.Printf("%.2g\n\n", fc)
 }
 
-// place la somme a + b dans le reciever
+// place la sommedes matrices a + b dans le reciever
 func (m *CMat) Add(a, b *CMat) *CMat {
 	mR, mI := m.RI()
 	aR, aI := a.RI()
@@ -193,7 +210,7 @@ func (m *CMat) CoefWiseProd(a, b *CMat) *CMat {
 	return m
 }
 
-// mutiplie in place le reciever par c
+// mutiplie in place le reciever par un nombre complexe c
 func (m *CMat) Scale(c complex128) *CMat {
 	ma := m.mat
 	for i, k := range ma.RawCMatrix().Data {
@@ -239,6 +256,7 @@ func (m *CMat) Mult(a, b *CMat) *CMat {
 	return m
 }
 
+// transpose la matrice m in place
 func (m *CMat) Transpose() {
 	r, c := m.mat.Dims()
 	data := make([]complex128, r*c)
@@ -255,6 +273,7 @@ func (m *CMat) Transpose() {
 	m.mat = *mat.NewCDense(c, r, data)
 }
 
+// retourne la matrice conjuguée de m
 func (m *CMat) Conjugate() *CMat {
 	for k, coef := range m.GetData() {
 		m.mat.RawCMatrix().Data[k] = cmplx.Conj(coef)
@@ -263,6 +282,7 @@ func (m *CMat) Conjugate() *CMat {
 }
 
 //AJOUTER CONTROLE DES TAILLE DES VECTEURS
+// retourne le produit scalaire des matrices colonnes a et b
 func DotProduct(a, b *CMat) complex128 {
 	res := 0 + 0i
 	dataa, datab := a.mat.RawCMatrix().Data, b.mat.RawCMatrix().Data
@@ -272,13 +292,13 @@ func DotProduct(a, b *CMat) complex128 {
 	return res
 }
 
-//Renvoie le carré de la norme
+//Renvoie le carré de la norme de la matrice colonne m
 //Ajouter le controle de la dimension
 func (m *CMat) SquaredNorm() complex128 {
 	return DotProduct(m, m)
 }
 
-//Returns ||a-b||_infty
+//Retourne ||a||_infty
 func (a *CMat) MaxNorm() float64 {
 	ra, ca := a.mat.Dims()
 	max := 0.
